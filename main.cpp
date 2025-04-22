@@ -87,6 +87,10 @@ Matrix4x4 MakeRotateZMatrix(float radian);
 // 3次元アフィン変換行列
 Matrix4x4 MakeAffineMatrix(const Vector3& scale, const Vector3& rotate, const Vector3& translate);
 
+Matrix4x4 MakeAffineMatrixGPT(const Vector3& scale, const Vector3& rotate, const Vector3& translate);
+
+Matrix4x4 MakeAffineMatrixMy(const Vector3& scale, const Vector3& rotate, const Vector3& translate);
+
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
@@ -101,6 +105,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	Vector3 rotate{ 0.4f, 1.43f, -0.8f };
 	Vector3 translate{ 2.7f, -4.15f, 1.57f };
 	Matrix4x4 worldMatrix = MakeAffineMatrix(scale, rotate, translate);
+	Matrix4x4 worldMatrixGPT = MakeAffineMatrixGPT(scale, rotate, translate);
+	Matrix4x4 worldMatrixMy = MakeAffineMatrixMy(scale, rotate, translate);
 
 	// ウィンドウの×ボタンが押されるまでループ
 	while (Novice::ProcessMessage() == 0) {
@@ -124,6 +130,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		///
 
 		MatrixScreenPrintf(0, 0, worldMatrix, "worldMatrix");
+		MatrixScreenPrintf(0, kRowHeight * 5, worldMatrixGPT, "worldMatrixGPT");
+		MatrixScreenPrintf(0, kRowHeight * 10, worldMatrixMy, "worldMatrixMy"); 
 
 		///
 		/// ↑描画処理ここまで
@@ -438,29 +446,64 @@ Matrix4x4 MakeAffineMatrix(const Vector3& scale, const Vector3& rotate, const Ve
 				Multiply(MakeRotateXMatrix(rotate.x),
 				Multiply(MakeRotateYMatrix(rotate.y), MakeRotateZMatrix(rotate.z))), 
 				MakeTranslateMatrix(translate)));
+}
 
-
-	/*return
+Matrix4x4 MakeAffineMatrixMy(const Vector3& scale, const Vector3& rotate, const Vector3& translate)
+{
+	return Matrix4x4
 	{
+
 		scale.x * (std::cos(rotate.y) * std::cos(rotate.z)),
-		scale.x * (-std::cos(rotate.y) * std::sin(rotate.z)),
-		scale.x * (std::sin(rotate.y)),
+		scale.x * (std::cos(rotate.y) * std::sin(rotate.z)),
+		scale.x * (-std::sin(rotate.y)),
 		0.0f,
 
-		scale.y * ((std::cos(rotate.x) * std::sin(rotate.z)) + (std::sin(rotate.x) * std::sin(rotate.y) * std::cos(rotate.z))),
-		scale.y * ((std::cos(rotate.x) * std::cos(rotate.z)) - (std::sin(rotate.x) * std::sin(rotate.y) * std::sin(rotate.z))),
-		scale.y * (-std::sin(rotate.x) * std::cos(rotate.y)),
+		scale.y * (-std::cos(rotate.x) * std::sin(rotate.z) + std::sin(rotate.x) * std::sin(rotate.y) * std::cos(rotate.z)),
+		scale.y * (std::cos(rotate.x) * std::cos(rotate.z) + std::sin(rotate.x) * std::sin(rotate.y) * std::sin(rotate.z)),
+		scale.y * (std::sin(rotate.x) * std::cos(rotate.y)),
 		0.0f,
 
-		scale.z * ((std::sin(rotate.x) * std::sin(rotate.z)) - (std::cos(rotate.x) * std::sin(rotate.y) * std::cos(rotate.z))),
-		scale.z * ((std::sin(rotate.x) * std::cos(rotate.z)) + (std::cos(rotate.x) * std::sin(rotate.y) * std::sin(rotate.z))),
+		scale.z * (std::sin(rotate.x) * std::sin(rotate.z) + std::cos(rotate.x) * std::sin(rotate.y) * std::cos(rotate.z)),
+		scale.z * (-std::sin(rotate.x) * std::cos(rotate.z) + std::cos(rotate.x) * std::sin(rotate.y) * std::sin(rotate.z)),
 		scale.z * (std::cos(rotate.x) * std::cos(rotate.y)),
 		0.0f,
 
-		
-		translate.x, 
-		translate.y, 
-		translate.z, 
+		translate.x,
+		translate.y,
+		translate.z,
 		1.0f
-	};*/
+	};
+}
+
+Matrix4x4 MakeAffineMatrixGPT(const Vector3& scale, const Vector3& rotate, const Vector3& translate)
+{
+	float cx = std::cos(rotate.x), sx = std::sin(rotate.x);
+	float cy = std::cos(rotate.y), sy = std::sin(rotate.y);
+	float cz = std::cos(rotate.z), sz = std::sin(rotate.z);
+
+	// Rx * Ry * Rz の合成
+	float r00 = cy * cz;
+	float r01 = cy * sz;
+	float r02 = -sy;
+
+	float r10 = -cx * sz + sx * sy * cz;
+	float r11 = cx * cz + sx * sy * sz;
+	float r12 = sx * cy;
+
+	float r20 = sx * sz + cx * sy * cz;
+	float r21 = -sx * cz + cx * sy * sz;
+	float r22 = cx * cy;
+
+	// スケーリング適用（各行ごと）
+	r00 *= scale.x;  r01 *= scale.x;  r02 *= scale.x;
+	r10 *= scale.y;  r11 *= scale.y;  r12 *= scale.y;
+	r20 *= scale.z;  r21 *= scale.z;  r22 *= scale.z;
+
+	// アフィン行列を構築
+	return Matrix4x4{
+		r00, r01, r02, 0.0f,
+		r10, r11, r12, 0.0f,
+		r20, r21, r22, 0.0f,
+		translate.x, translate.y, translate.z, 1.0f
+	};
 }
